@@ -11,10 +11,10 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
-public class Groups {
+public class Channels {
 
-    private String chatId;
+    private String groupId;
 
-    private String name;
+    private String groupName;
 
 }

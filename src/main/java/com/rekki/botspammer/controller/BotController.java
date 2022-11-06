@@ -1,6 +1,7 @@
 package com.rekki.botspammer.controller;
 
 import com.rekki.botspammer.enums.BotState;
+import com.rekki.botspammer.model.Channels;
 import com.rekki.botspammer.model.Groups;
 import com.rekki.botspammer.model.User;
 import com.rekki.botspammer.service.AsyncSendAPIService;
@@ -23,8 +24,9 @@ import java.util.concurrent.CompletableFuture;
 public class BotController extends TelegramLongPollingBot implements AsyncSendAPIService {
 
     private final BotService botService;
-    static HashMap<String, Groups> groupsHashMap = BotServiceImpl.groups;
+    static HashMap<String, Channels> channelsHashMap = BotServiceImpl.channels;
     static HashMap<String, User> userHashMap = BotServiceImpl.chatIdUsers;
+    static HashMap<String, Groups>  groupsHashMap = BotServiceImpl.groups;
 
     @Override
     public String getBotToken() {
@@ -39,31 +41,36 @@ public class BotController extends TelegramLongPollingBot implements AsyncSendAP
     @SneakyThrows
     @Override
     public void onUpdateReceived(Update update) {
-        Long groupId = update.getChannelPost().getChatId();
-        Long chatId = update.getMessage().getChatId();
-        String text = update.getMessage().getText();
-        if (update.getMessage().hasText()) {
-            if (groupId != null) {
-                botService.saveGroups(update);
+
+            if (update.hasChannelPost()) {
+                botService.saveChannels(update);
             } else {
-                String chatID = String.valueOf(chatId);
-                User user = botService.getUserByChatId(chatID, update);
-                switch (user.getBotState())  {
-                    case START -> execute(botService.start(update));
-                    case GET_MESSAGE -> execute(botService.getMessage(update));
-                    case GET_NUMBER -> execute(botService.getNumberOfMessage(update));
-                }
+                String chatId = update.getMessage().getChatId().toString();
 
-                if (text.equals("RESTART \uD83D\uDD04"))
-                    execute(botService.start(update));
+                if (chatId.startsWith("-")) {
+                    botService.saveGroups(update);
+                } else {
+                    User user = botService.getUserByChatId(chatId, update);
+                    switch (user.getBotState()) {
+                        case START -> execute(botService.start(update));
+                        case GET_MESSAGE -> execute(botService.getMessage(update));
+                        case GET_NUMBER -> execute(botService.getNumberOfMessage(update));
+                    }
 
-                if (user.getBotState().equals(BotState.SPAM)) {
-                    execute(botService.sendSpam(update));
-                    if (user.getBotState().equals(BotState.SPAM_PROCESS))
-                        sendToGroups(user.getMessage(), user.getMsgNums());
+                    if (user.getBotState().equals(BotState.SPAM)) {
+                        execute(botService.sendSpam(update));
+                        if (user.getBotState().equals(BotState.SPAM_PROCESS))
+                            sendToGroups(user.getMessage(), user.getMsgNums());
+                    }
+
+                    if (update.getMessage().hasText()) {
+                        String text = update.getMessage().getText();
+                        if (text.equals("RESTART \uD83D\uDD04")) {
+                            execute(botService.start(update));
+                        }
+                    }
                 }
             }
-        }
     }
 
     @Override
@@ -84,9 +91,14 @@ public class BotController extends TelegramLongPollingBot implements AsyncSendAP
         });
     }
     private void sendToGroups(String text, Long times) {
-        for (Groups gro : groupsHashMap.values()) {
+        for (Channels gro : channelsHashMap.values()) {
             for (int i = 0; i < times; i++) {
                 sendText(text, gro.getGroupId());
+            }
+        }
+        for (Groups gro : groupsHashMap.values()) {
+            for (int i = 0; i < times; i++) {
+                sendText(text, gro.getChatId());
             }
         }
     }

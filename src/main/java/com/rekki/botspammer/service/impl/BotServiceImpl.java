@@ -1,11 +1,10 @@
 package com.rekki.botspammer.service.impl;
 
 import com.rekki.botspammer.enums.BotState;
+import com.rekki.botspammer.model.Channels;
 import com.rekki.botspammer.model.Groups;
 import com.rekki.botspammer.model.User;
-import com.rekki.botspammer.service.AsyncSendAPIService;
 import com.rekki.botspammer.service.BotService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -22,6 +21,7 @@ import java.util.Optional;
 public class BotServiceImpl implements BotService {
 
     public static HashMap<String, User> chatIdUsers = new HashMap<>();
+    public static HashMap<String, Channels> channels = new HashMap<>();
     public static HashMap<String, Groups> groups = new HashMap<>();
 
     @Override
@@ -118,13 +118,27 @@ public class BotServiceImpl implements BotService {
     }
 
     @Override
+    public void saveChannels(Update update) {
+        String chatId = update.getChannelPost().getChatId().toString();
+        Optional.ofNullable(channels.get(chatId))
+                .orElseGet(() -> {
+                    Channels group = Channels.builder()
+                            .groupId(chatId)
+                            .groupName(update.getChannelPost().getChat().getFirstName())
+                            .build();
+                    channels.put(chatId, group);
+                    return group;
+                });
+    }
+
+    @Override
     public void saveGroups(Update update) {
         String chatId = update.getMessage().getChatId().toString();
         Optional.ofNullable(groups.get(chatId))
                 .orElseGet(() -> {
                     Groups group = Groups.builder()
-                            .groupId(chatId)
-                            .groupName(update.getMessage().getChat().getFirstName())
+                            .chatId(chatId)
+                            .name(update.getMessage().getChat().getFirstName())
                             .build();
                     groups.put(chatId, group);
                     return group;

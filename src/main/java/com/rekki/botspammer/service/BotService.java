@@ -16,6 +16,8 @@ public interface BotService {
 
     User getUserByChatId(String chatId, Update update);
 
+    void saveChannels(Update update);
+
     void saveGroups(Update update);
 
 }
